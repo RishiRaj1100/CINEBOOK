@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CineBook — Movie Ticket Booking System
 
-## Getting Started
+A production-style BookMyShow/Fandango clone built with Next.js 16, TypeScript, Tailwind CSS, Supabase, and Razorpay.
 
-First, run the development server:
+---
 
+## 🚀 Getting Started
+
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd movie-booking
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Variables
+Supabase credentials are pre-filled in `.env.local`. Add your **Razorpay test keys**:
+```env
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=...
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_...
+```
+Get Razorpay test keys from: https://dashboard.razorpay.com/app/keys (switch to Test Mode)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Run Database Migrations
+Open the [Supabase SQL Editor](https://supabase.com/dashboard/project/vsmlpxldavykyyosgvia/sql/new) and run these files in order:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. `supabase/migrations/001_schema.sql` — Tables, indexes, triggers
+2. `supabase/migrations/002_rls.sql` — Row Level Security policies  
+3. `supabase/migrations/003_functions.sql` — RPC functions + pg_cron job
+4. `supabase/migrations/004_seed.sql` — Sample movies & theaters (optional)
 
-## Learn More
+### 4. Make Yourself Admin
+After creating an account:
+```sql
+-- Run in Supabase SQL Editor
+UPDATE profiles SET role = 'admin' WHERE id = 'your-user-uuid';
+```
+Find your UUID: Supabase Dashboard → Authentication → Users.
 
-To learn more about Next.js, take a look at the following resources:
+### 5. Google OAuth (Optional)
+1. [Google Cloud Console](https://console.cloud.google.com/) → Create OAuth 2.0 credentials
+2. Authorized Redirect URI: `https://vsmlpxldavykyyosgvia.supabase.co/auth/v1/callback`
+3. Supabase Dashboard → Authentication → Providers → Google → paste Client ID + Secret
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 6. Start Dev Server
+```bash
+npm run dev
+# Opens http://localhost:3000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🔒 Anti-Double-Booking Mechanism
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The core concurrency guarantee lives in the `hold_seats` Postgres function:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sql
+-- hold_seats uses SELECT ... FOR UPDATE SKIP LOCKED:
+--
+-- Scenario: User A and User B both try to book seat X simultaneously.
+--
+-- User A's transaction:
+--   SELECT id FROM show_seats WHERE id = X FOR UPDATE SKIP LOCKED;
+--   → Gets the row lock. Updates status='locked'.
+--   → Commits.
+--
+-- User B's transaction (concurrent):
+--   SELECT id FROM show_seats WHERE id = X FOR UPDATE SKIP LOCKED;
+--   → Row is locked by A's active transaction → SKIPPED (not returned)
+--   → Returned count (0) < requested count (1) → RAISE EXCEPTION → ROLLBACK
+--
+-- Result: User A gets the seat. User B gets a clean "seat unavailable" error.
+-- No double booking possible. Serialized at the DB level.
+```
+
+**Additional safeguards:**
+- `confirm_booking` is **idempotent** (double webhook calls are safe)
+- `create_booking` **re-verifies** lock ownership before creating Razorpay order
+- `pg_cron` releases expired locks every 30 seconds
+- Frontend subscribes to **Supabase Realtime** — live seat status updates, no polling
+
+---
+
+## 💰 Currency
+- Stored as **paise** (integer, no floats). `₹150 = 15000 paise`
+- Seat prices: base × multiplier (regular 1×, premium 1.5×, recliner 2×)
+- Convenience fee: 2.5% | GST: 18%
+
+---
+
+## 🏗️ Architecture
+```
+lib/domain/     ← Pure TypeScript, zero Supabase imports (testable, swappable)
+lib/data/       ← Supabase implementations of domain interfaces
+lib/providers/  ← Dependency injection factory
+components/     ← UI components
+app/            ← Next.js App Router pages + API routes
+```
