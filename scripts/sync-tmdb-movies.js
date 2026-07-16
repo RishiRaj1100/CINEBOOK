@@ -5,16 +5,9 @@
 
 const { Client } = require('pg');
 
-const DB_CONFIG = {
-  host:     'aws-0-ap-northeast-1.pooler.supabase.com',
-  port:     5432,
-  database: 'postgres',
-  user:     'postgres.<project-ref>',
-  password: '${DB_PASSWORD}',
-  ssl:      { rejectUnauthorized: false },
-};
+const { DB_CONFIG, TMDB_API_KEY } = require('./db-config');
 
-const TMDB_API_KEY = process.env.TMDB_API_KEY || '${TMDB_API_KEY}';
+
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p';
 

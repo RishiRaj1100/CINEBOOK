@@ -4,14 +4,8 @@
 
 const { Client } = require('pg');
 
-const DB_CONFIG = {
-  host:     'aws-0-ap-northeast-1.pooler.supabase.com',
-  port:     5432,
-  database: 'postgres',
-  user:     'postgres.<project-ref>',
-  password: '${DB_PASSWORD}',
-  ssl:      { rejectUnauthorized: false },
-};
+const { DB_CONFIG, TMDB_API_KEY } = require('./db-config');
+
 
 const FAMOUS_INDIAN_CINEMAS = [
   { name: 'Maratha Mandir Cinema', city: 'Mumbai', address: '22, M M Marg, Gilder Path, Mumbai Central' },

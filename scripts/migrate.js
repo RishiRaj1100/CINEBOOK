@@ -1,22 +1,12 @@
 // scripts/migrate.js
 // Runs all SQL migration files against Supabase Postgres in order
 // Usage: node scripts/migrate.js
+// Requires: DB_HOST, DB_USER, DB_PASSWORD set in .env.local or shell environment
 
 const { Client } = require('pg');
+const { DB_CONFIG } = require('./db-config');
 const fs = require('fs');
 const path = require('path');
-
-// Direct Postgres connection to Supabase
-// Using Session Mode pooler — works on all Supabase tiers including Free
-const DB_CONFIG = {
-  host:     'aws-0-ap-northeast-1.pooler.supabase.com',
-  port:     5432,  // Session mode port
-  database: 'postgres',
-  user:     'postgres.<project-ref>',  // pooler format: postgres.<project-ref>
-  password: '${DB_PASSWORD}',
-  ssl:      { rejectUnauthorized: false },
-  connectionTimeoutMillis: 30000,
-};
 
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'supabase', 'migrations');
 
