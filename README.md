@@ -10,14 +10,68 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.x-38BDF8?logo=tailwindcss)](https://tailwindcss.com/)
 [![Razorpay](https://img.shields.io/badge/Payments-Razorpay-02042B?logo=razorpay)](https://razorpay.com/)
 [![TMDB](https://img.shields.io/badge/Movies-TMDB%20API-01D277?logo=themoviedatabase)](https://www.themoviedb.org/)
-[![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel)](https://vercel.com/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-%E2%96%B6%20Open%20App-FF4500?logo=vercel&logoColor=white)](https://cinebook-h67dklz41-rishiraj02989-5516s-projects.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **CineBook** is a full-stack, production-ready movie ticket booking web app — inspired by BookMyShow and Fandango — built from scratch with a clean domain-driven architecture, real-time seat updates, and a secure payment flow via Razorpay.
 
-[Features](#-features) · [Architecture](#-architecture) · [System Design](#-system-design) · [Class Diagrams](#-class-diagrams) · [Getting Started](#-getting-started)
+### 🚀 [View Live App →](https://cinebook-h67dklz41-rishiraj02989-5516s-projects.vercel.app)
+
+[Features](#-features) · [Live Demo](#-live-demo) · [Architecture](#-architecture) · [System Design](#-system-design) · [Class Diagrams](#-class-diagrams) · [Getting Started](#-getting-started)
 
 </div>
+
+---
+
+## 🌐 Live Demo
+
+> **Try the app live — no setup required!**
+>
+> 🔗 **[https://cinebook-h67dklz41-rishiraj02989-5516s-projects.vercel.app](https://cinebook-h67dklz41-rishiraj02989-5516s-projects.vercel.app)**
+
+### 🎬 Full User Journey
+
+```mermaid
+journey
+    title CineBook — Complete Booking Experience
+    section 🏠 Landing
+      Open CineBook homepage: 5: User
+      Browse featured & trending movies: 5: User
+      Select your city from header: 4: User
+    section 🎥 Explore Movies
+      Navigate to Explore page: 5: User
+      Filter by genre language format: 4: User
+      Browse Netflix-style carousels: 5: User
+      Click movie for details: 5: User
+    section 🗓️ Pick a Show
+      View movie detail and cast info: 5: User
+      Select city and showtime: 4: User
+      Choose date and screen format: 4: User
+    section 💺 Seat Selection
+      View interactive seat map: 5: User
+      Select preferred seats: 5: User
+      See real-time price breakdown: 4: User
+      Proceed to checkout: 5: User
+    section 💳 Payment
+      Review booking summary: 5: User
+      Pay via UPI Card or Wallet: 5: User
+      Secure Razorpay checkout: 5: User
+    section ✅ Confirmation
+      Receive booking confirmation: 5: User
+      Download QR code ticket: 5: User
+      View booking history: 4: User
+```
+
+### ⚡ What to Try on the Live App
+
+| Feature | Where to find it |
+|---------|------------------|
+| 🎬 Browse movies | Homepage → featured carousels |
+| 🔍 Filter by genre/city | Explore page → multiselect filters |
+| 💺 Interactive seat map | Any movie → pick showtime → select seats |
+| 💳 Razorpay test payment | Use card `4111 1111 1111 1111`, any future expiry, any CVV |
+| 📱 QR Code ticket | After payment → My Bookings |
+| 🌐 City switcher | Header → click city name |
 
 ---
 
