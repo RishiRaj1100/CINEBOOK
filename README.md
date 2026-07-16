@@ -15,7 +15,7 @@
 
 **CineBook** is a full-stack, production-ready movie ticket booking web app — inspired by BookMyShow and Fandango — built from scratch with a clean domain-driven architecture, real-time seat updates, and a secure payment flow via Razorpay.
 
-[Features](#-features) · [Architecture](#-architecture) · [Getting Started](#-getting-started) · [Deployment](#-deploying-to-vercel)
+[Features](#-features) · [Architecture](#-architecture) · [System Design](#-system-design) · [Class Diagrams](#-class-diagrams) · [Getting Started](#-getting-started)
 
 </div>
 
@@ -68,58 +68,335 @@
 
 ## 🏗️ Architecture
 
-CineBook uses a clean **Domain-Driven Design (DDD)** layered architecture:
+CineBook uses a clean **Domain-Driven Design (DDD)** layered architecture with strict separation between domain logic, data access, and UI.
 
-```
-src/
-├── app/                        # Next.js App Router (pages + API routes)
-│   ├── page.tsx                # Homepage — hero + featured movies
-│   ├── explore/                # Explore page — filtered movie carousels
-│   ├── movies/[id]/            # Movie detail page + show selection
-│   ├── shows/[id]/             # Showtime page + seat map
-│   ├── checkout/               # Checkout flow
-│   ├── bookings/               # My Bookings + QR ticket
-│   ├── admin/                  # Admin dashboard (role-gated)
-│   ├── auth/                   # Login / Register / OAuth callback
-│   └── api/                    # API routes
-│       ├── image-proxy/        # TMDB image proxy (bypass ISP blocks)
-│       ├── tmdb/               # TMDB reverse proxy + caching
-│       ├── bookings/           # Booking CRUD + seat hold
-│       ├── orders/             # Razorpay order creation
-│       └── webhooks/razorpay/  # Payment confirmation webhook
-│
-├── lib/
-│   ├── domain/                 # Pure TypeScript — zero external imports
-│   │   ├── types.ts            # All entity & DTO types
-│   │   └── interfaces/         # Repository + Service interfaces
-│   │
-│   ├── data/                   # Supabase implementations
-│   │   └── repositories/       # Concrete Supabase repository classes
-│   │
-│   └── providers/              # Dependency injection factory
-│       └── index.ts            # getRepositories() — wires everything together
-│
-└── components/
-    ├── layout/                 # Header, Footer, Sidebar
-    ├── movies/                 # MovieCard, MovieHero, TrailerModal
-    ├── seat-map/               # SeatMap, SeatLegend
-    ├── booking/                # BookingSummary, PricingBreakdown
-    └── providers/              # React context providers (Auth, Location, QueryClient)
-```
+```mermaid
+graph TD
+    subgraph UI["🖥️ Presentation Layer"]
+        A[Next.js App Router<br/>Pages & Layouts]
+        B[React Components<br/>movies · seat-map · booking]
+        C[Context Providers<br/>Auth · Location · Query]
+    end
 
-### Data Flow
+    subgraph API["⚙️ Application Layer"]
+        D[API Routes<br/>/api/bookings]
+        E[API Routes<br/>/api/orders]
+        F[API Routes<br/>/api/webhooks/razorpay]
+        G[API Routes<br/>/api/tmdb  ·  /api/image-proxy]
+    end
 
-```
-Browser → Next.js App Router → API Route Handler
-                                      ↓
-                          getRepositories() [DI Factory]
-                                      ↓
-                          SupabaseRepository [data layer]
-                                      ↓
-                          Supabase PostgreSQL [with RLS]
+    subgraph Domain["🔵 Domain Layer — Pure TypeScript"]
+        H[types.ts<br/>Entities & DTOs]
+        I[Repository Interfaces<br/>IMovieRepo · IBookingRepo]
+    end
+
+    subgraph Data["🟢 Data Layer — Supabase"]
+        J[MovieRepository]
+        K[BookingRepository]
+        L[ShowRepository]
+        M[TheaterRepository]
+    end
+
+    subgraph DB["🗄️ Database"]
+        N[(Supabase PostgreSQL<br/>+ RLS + Realtime)]
+    end
+
+    subgraph External["🌐 External Services"]
+        O[TMDB API]
+        P[Razorpay Gateway]
+    end
+
+    A --> B
+    B --> C
+    A --> D
+    A --> E
+    A --> F
+    A --> G
+    D --> I
+    E --> I
+    F --> I
+    I --> J
+    I --> K
+    I --> L
+    I --> M
+    H --> I
+    J --> N
+    K --> N
+    L --> N
+    M --> N
+    G --> O
+    E --> P
+    F --> P
+
+    style Domain fill:#1e3a5f,stroke:#3b82f6,color:#93c5fd
+    style Data fill:#14532d,stroke:#22c55e,color:#86efac
+    style UI fill:#3b1f5e,stroke:#a855f7,color:#d8b4fe
+    style API fill:#7c2d12,stroke:#f97316,color:#fed7aa
+    style DB fill:#1c1917,stroke:#78716c,color:#d6d3d1
+    style External fill:#1a1a2e,stroke:#6366f1,color:#c7d2fe
 ```
 
 The domain layer (`lib/domain/`) has **zero dependencies** on Supabase or any external library — making it fully testable and swappable.
+
+---
+
+## 🔭 System Design
+
+End-to-end request flow for a complete ticket booking, from browser to database:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser
+    participant NextJS as Next.js Server
+    participant TMDB as TMDB API
+    participant Supabase as Supabase DB
+    participant Realtime as Supabase Realtime
+    participant Razorpay
+
+    Note over User,Razorpay: 🎬 Phase 1 — Movie Discovery
+    User->>Browser: Open CineBook
+    Browser->>NextJS: GET /explore
+    NextJS->>TMDB: GET /movie/now_playing (cached)
+    TMDB-->>NextJS: Movie list + metadata
+    NextJS-->>Browser: Render carousels
+
+    Note over User,Razorpay: 🗓️ Phase 2 — Show & Seat Selection
+    User->>Browser: Select movie → choose showtime
+    Browser->>NextJS: GET /shows/[id]
+    NextJS->>Supabase: SELECT show_seats WHERE show_id=X
+    Supabase-->>NextJS: Seat map with statuses
+    NextJS-->>Browser: Render interactive seat map
+    Supabase-->>Browser: WebSocket: live seat updates
+
+    Note over User,Razorpay: 🔒 Phase 3 — Atomic Seat Lock
+    User->>Browser: Click seats → Proceed
+    Browser->>NextJS: POST /api/bookings/hold
+    NextJS->>Supabase: CALL hold_seats() FOR UPDATE SKIP LOCKED
+    alt Seats available
+        Supabase-->>NextJS: Lock acquired ✅
+        NextJS-->>Browser: Seats held (10 min TTL)
+        Supabase-->>Realtime: Broadcast seat status = locked
+        Realtime-->>Browser: Other users see seats locked 🔴
+    else Seats taken
+        Supabase-->>NextJS: RAISE EXCEPTION seat_unavailable
+        NextJS-->>Browser: 409 Conflict — seats unavailable
+    end
+
+    Note over User,Razorpay: 💳 Phase 4 — Payment
+    Browser->>NextJS: POST /api/orders/create
+    NextJS->>Supabase: Re-verify lock ownership
+    NextJS->>Razorpay: Create order (amount in paise)
+    Razorpay-->>NextJS: order_id
+    NextJS-->>Browser: Return order_id + key
+    Browser->>Razorpay: Open Razorpay Checkout
+    User->>Razorpay: Complete payment (UPI/Card)
+    Razorpay-->>Browser: payment_id + signature
+
+    Note over User,Razorpay: ✅ Phase 5 — Confirmation
+    Razorpay->>NextJS: POST /api/webhooks/razorpay
+    NextJS->>NextJS: Verify HMAC signature
+    NextJS->>Supabase: CALL confirm_booking() idempotent
+    Supabase-->>NextJS: Booking confirmed, seats = booked
+    Supabase-->>Realtime: Broadcast seat status = booked
+    Realtime-->>Browser: All clients see seats booked 🟢
+    NextJS-->>Browser: Redirect to /bookings/[id] + QR ticket
+```
+
+---
+
+## 📐 Class Diagrams
+
+### Domain Entities
+
+```mermaid
+classDiagram
+    class Movie {
+        +string id
+        +string title
+        +string posterUrl
+        +string backdropUrl
+        +string trailerUrl
+        +string[] genres
+        +number tmdbId
+        +number rating
+        +number durationMinutes
+        +string language
+        +string releaseDate
+        +string synopsis
+    }
+
+    class Theater {
+        +string id
+        +string name
+        +string city
+        +string address
+        +string[] amenities
+        +number totalSeats
+    }
+
+    class Show {
+        +string id
+        +string movieId
+        +string theaterId
+        +Date showTime
+        +string format
+        +string language
+        +number basePriceRegular
+        +number basePricePremium
+        +number basePriceRecliner
+    }
+
+    class ShowSeat {
+        +string id
+        +string showId
+        +string row
+        +number number
+        +SeatType type
+        +SeatStatus status
+        +number priceInPaise
+        +string lockedBy
+        +Date lockExpiresAt
+    }
+
+    class Booking {
+        +string id
+        +string userId
+        +string showId
+        +BookingStatus status
+        +number totalAmountPaise
+        +number convenienceFeePaise
+        +number gstPaise
+        +string razorpayOrderId
+        +string razorpayPaymentId
+        +Date createdAt
+    }
+
+    class BookingSeat {
+        +string id
+        +string bookingId
+        +string showSeatId
+    }
+
+    class Profile {
+        +string id
+        +string email
+        +string fullName
+        +string avatarUrl
+        +UserRole role
+    }
+
+    class SeatType {
+        <<enumeration>>
+        REGULAR
+        PREMIUM
+        RECLINER
+    }
+
+    class SeatStatus {
+        <<enumeration>>
+        AVAILABLE
+        LOCKED
+        BOOKED
+    }
+
+    class BookingStatus {
+        <<enumeration>>
+        PENDING
+        CONFIRMED
+        CANCELLED
+        EXPIRED
+    }
+
+    class UserRole {
+        <<enumeration>>
+        USER
+        ADMIN
+    }
+
+    Show --> Movie : "screens"
+    Show --> Theater : "hosted at"
+    ShowSeat --> Show : "belongs to"
+    ShowSeat --> SeatType
+    ShowSeat --> SeatStatus
+    Booking --> Show : "for"
+    Booking --> Profile : "by"
+    Booking --> BookingStatus
+    BookingSeat --> Booking : "part of"
+    BookingSeat --> ShowSeat : "reserves"
+    Profile --> UserRole
+```
+
+### Repository & Service Interfaces
+
+```mermaid
+classDiagram
+    class IMovieRepository {
+        <<interface>>
+        +findById(id) Movie
+        +findAll(filters) Movie[]
+        +findNowPlaying() Movie[]
+        +upsertFromTMDB(data) Movie
+    }
+
+    class ITheaterRepository {
+        <<interface>>
+        +findById(id) Theater
+        +findByCity(city) Theater[]
+        +create(data) Theater
+    }
+
+    class IShowRepository {
+        <<interface>>
+        +findById(id) Show
+        +findByMovieAndCity(movieId, city) Show[]
+        +findByTheater(theaterId) Show[]
+        +getSeats(showId) ShowSeat[]
+    }
+
+    class IBookingRepository {
+        <<interface>>
+        +findById(id) Booking
+        +findByUser(userId) Booking[]
+        +holdSeats(showId, seatIds, userId) void
+        +createOrder(bookingId) RazorpayOrder
+        +confirmBooking(orderId, paymentId) Booking
+        +cancelExpiredHolds() void
+    }
+
+    class SupabaseMovieRepository {
+        -SupabaseClient client
+        +findById(id) Movie
+        +findAll(filters) Movie[]
+        +findNowPlaying() Movie[]
+        +upsertFromTMDB(data) Movie
+    }
+
+    class SupabaseBookingRepository {
+        -SupabaseClient client
+        +findById(id) Booking
+        +findByUser(userId) Booking[]
+        +holdSeats(showId, seatIds, userId) void
+        +createOrder(bookingId) RazorpayOrder
+        +confirmBooking(orderId, paymentId) Booking
+        +cancelExpiredHolds() void
+    }
+
+    class RepositoryFactory {
+        +getRepositories() Repositories
+        -movies IMovieRepository
+        -theaters ITheaterRepository
+        -shows IShowRepository
+        -bookings IBookingRepository
+    }
+
+    IMovieRepository <|.. SupabaseMovieRepository : implements
+    IBookingRepository <|.. SupabaseBookingRepository : implements
+    RepositoryFactory --> IMovieRepository : provides
+    RepositoryFactory --> ITheaterRepository : provides
+    RepositoryFactory --> IShowRepository : provides
+    RepositoryFactory --> IBookingRepository : provides
+```
 
 ---
 
@@ -255,26 +532,6 @@ npm run dev
 ```
 
 ---
-
-## 🌐 Deploying to Vercel
-
-CineBook is optimized for [Vercel](https://vercel.com/) deployment.
-
-### Steps
-
-1. **Fork or push** this repository to your GitHub account
-2. Go to [vercel.com/new](https://vercel.com/new) and import the repository
-3. Set the **Root Directory** to `movie-booking`
-4. Add all environment variables from your `.env.local` — replace `NEXT_PUBLIC_APP_URL` with your Vercel domain
-5. Click **Deploy** — Vercel auto-detects Next.js and configures everything
-
-### Post-Deployment Checklist
-
-- [ ] Update `NEXT_PUBLIC_APP_URL` to your Vercel domain (e.g., `https://cinebook.vercel.app`)
-- [ ] Add your Vercel domain to Supabase: Dashboard → **Authentication** → **URL Configuration** → **Site URL**
-- [ ] Add your Vercel domain to Supabase → **Authentication** → **Redirect URLs**
-- [ ] Update Razorpay webhook URL to: `https://your-domain.vercel.app/api/webhooks/razorpay`
-- [ ] Add the Vercel domain to Google OAuth Authorized Redirect URIs *(if using Google OAuth)*
 
 ---
 
