@@ -1,26 +1,110 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Design Tokens
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg:       #0a0a0f;
+  --color-surface:  #12121a;
+  --color-surface2: #1a1a2e;
+  --color-border:   rgba(255,255,255,0.08);
+  --color-accent:   #e50914;
+  --color-accent2:  #ff6b35;
+  --color-gold:     #f5c518;
+  --color-text:     #f0f0f0;
+  --color-muted:    #8b8b9a;
+  --radius-sm:      6px;
+  --radius-md:      12px;
+  --radius-lg:      20px;
+  --shadow-glow:    0 0 40px rgba(229,9,20,0.15);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   Seat Map Colors
+   ============================================================ */
+.seat-regular       { background: #059669; color: white; cursor: pointer; transition: all 0.15s; border: none; }
+.seat-regular:hover { background: #10b981; transform: scale(1.05); }
+.seat-premium       { background: #2563eb; color: white; cursor: pointer; transition: all 0.15s; border: none; }
+.seat-premium:hover { background: #3b82f6; transform: scale(1.05); }
+.seat-recliner      { background: #7c3aed; color: white; cursor: pointer; transition: all 0.15s; border: none; }
+.seat-recliner:hover { background: #8b5cf6; transform: scale(1.05); }
+.seat-booked        { background: #374151; color: #6b7280; cursor: not-allowed; opacity: 0.7; border: none; }
+.seat-locked-other  { background: rgba(202,138,4,0.6); color: #fbbf24; cursor: not-allowed; border: 1px solid #ca8a04; }
+.seat-locked-own    { background: #ea580c; color: white; cursor: pointer; border: 2px solid #fb923c; transition: all 0.15s; }
+.seat-selected      { background: #dc2626; color: white; cursor: pointer; border: 2px solid #f87171; transform: scale(1.1); transition: all 0.15s; box-shadow: 0 4px 12px rgba(220,38,38,0.5); }
+
+/* ============================================================
+   Glass Card
+   ============================================================ */
+.glass-card {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================================
+   Gradient Text
+   ============================================================ */
+.gradient-text {
+  background: linear-gradient(135deg, #e50914 0%, #ff6b35 50%, #f5c518 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   Scrollbar
+   ============================================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: rgba(229,9,20,0.4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(229,9,20,0.3); }
+  50%       { box-shadow: 0 0 40px rgba(229,9,20,0.6); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-surface2) 50%, var(--color-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
 }
